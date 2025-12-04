@@ -1,0 +1,35 @@
+﻿** I first created a .NET 8 Winforms application and renamed MainForm to ControlUi.cs.  Then I used the following prompts used with Copilot GTP-5 with @Workspace to generate code for a magnifier application.  Any changes I made to the code or notes (like this) are noted in between ** **.  Each prompt is separated by double spaced lines.  Note that I wrote these prompts first in the Prompts.txt file, and AI helped write a lot of the prompts themselves in VS 2022.  The initial code generation did not have the using for Timer, so I had to add that (or tell VS to add it to remove the ambiguity between System.Windows.Forms.Timer and System.Threading.Timer. **
+
+Make this app into a magnifier.  The app should allow users to zoom in on specific areas of their screen, making it easier to see small details. Include features such as adjustable zoom levels, a crosshair for precise focusing, and the ability to move the magnified area around the screen. Additionally, implement a feature that allows users to take screenshots of the magnified view.  The magnified area should follow the mouse cursor when activated, and users should be able to toggle the magnifier on and off with a keyboard shortcut.  The size of the window displaying the magnified area should be adjustable by the user.  The controls of the app should be in a separate panel that can be shown or hidden as needed.
+
+The control panel is truncated so I cannot see it all, also I want to be able to change the position of the control panel.  The image window is just showing a black box with green crosshairs.
+
+Make the control panel a completely separate window that can be moved around independently of the magnified view.  Ensure that the control panel includes options to adjust zoom levels, toggle the magnifier on and off, change the size of the magnified window, and take screenshots.  The magnified view should correctly display the area under the mouse cursor with a green crosshair for precise focusing.  Add options to turn the crosshair on and off.  Also, add an option to turn off the smoothing effect on the magnified view for a clearer image.  Additionally, implement a feature that allows users to customize the position of the control panel on the screen for more flexible usage.  Implement user preferences to save the position and state of the control panel for consistency between sessions.  Add a feature that allows users to reset the magnifier settings to default values.
+
+ResetToDefaults was not implemented.  Please implement it.
+
+** I modified code to set the smoothing mode to None for no smoothing, and HighQuality for smoothing. **
+
+The Magnifier size controls do not need to be displayed in the control panel, simply allow the user to resize the magnifier window and update the magnified view accordingly.  Also, show a numeric value for the zoom level in the control panel, and allow values from 1x to 20x.
+
+** I modified the code to use file scoped namespaces. **
+
+The numeric value for the zoom level is not being displayed in the control panel, I think it is covered by another control.  Please fix this.  Also, there is too much empty space at the bottom of the control panel, please reduce it.  When closing the control panel, the application should exit as well.  Please implement this.
+
+As I move my mouse to the left or top of the control panel, the magnified view stretches and distorts.  Please fix this issue.
+
+When follow cursor is turned off, the magnified view just shows a green box.  Please fix this.
+
+Add a checkbox next to the Show Crosshair checkbox to capture the crosshair in screenshots.  This checkbox should be disabled when Show Crosshair is unchecked.
+
+Do not uncheck the Capture Crosshair in Screenshot checkbox when Show Crosshair is unchecked.  Instead, disable it but keep its checked state.  The crosshair should only be captured in screenshots when both Show Crosshair and Capture Crosshair in Screenshot are checked.  Clean up the magnified image so there is not a black border around it.  Also, when the magnifier window is resized, ensure that the magnified image updates correctly without distortion or black borders.
+
+The previous changes lost the magnified image, it is only showing a black box again.  Please fix this.
+
+I'm still only seeing a black box in the magnifier window.  Please fix this.
+
+Still only seeing a black box in the magnifier window.  This started happening when I said to fix the black border around the magnified image.  The black border fix may have broken the magnified image, and the black border is not a critical issue.  Please fix the magnified image.
+
+Sorry for the confusion, the magnifier was turned off and I forgot that was saved in my settings!  Now the black border is there on the right and bottom edges of the magnified image.  Please fix this and I'll make sure magnification is turned on next time!
+
+** Embarassing waste of time having the magnifier turned off, but I left all those prompts because I did not actually properly test the iterations in between them.  The only other code change was on one of the generated runs it put Math.max() instead of Math.Max().  I went back and reviewed the Copilot chat window to make sure it did that and I had not inadvertently changed the casing, and sure enough it was in the generated code. **
