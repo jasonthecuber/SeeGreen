@@ -53,3 +53,15 @@ The icon looks better, but how do I get .ico file created to be the icon for the
 Why do the exported icons look pixelated and bad compared to the ones generated in code?  Please fix this, particularly by ensuring the exported images maintain their quality when copied into the icon file.  Also, check the image resolution and ensure it's appropriate for scaling before exporting to avoid pixelation issues.
 
 ** I should have asked AI to help before, it changed the exporter to generate a packages icon with all the sizes, proper scaling, etc.  Much better!  I did have to change the FillRoundedRect and DrawRoundedRect graphics extensions to public to compile.  I also had to delete my iconcache file and reboot after fixing the icon for the .exe. **
+
+Add an about box to the control panel with information about the application, including version number, developer information, and a brief description of the app's functionality.  Include a link to the application's website or support page for users who want more information or assistance.  The about box should be accessible from a menu item in the control panel.
+
+The help menu is covered up partly by the zoom level numeric updown control.  Please fix this.  The developer should be "Jason Green" and the help link should go to "https://github.com/jasonthecuber/SeeGreen".  The help link text should say "SeeGreen on GitHub".  Also, please center the text in the about box.
+
+Sorry, but please only center the text vertically in the about box, not horizontally.  Also, there is a white line underneath the menu bar in the control panel, please remove that.
+
+** I lost three of the public methods with that last change.  I didn't review the Copilot changes very well, I must have missed it.  I just readded them from the unchanged version. **
+
+The toolstrip looks good, but it has a slight gradient from left to right that makes it look a little strange, please remove that.
+
+I like the toolstrip better, but I would like the border back for the submenu, it looks a little strange with the submenu blending into the form.

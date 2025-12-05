@@ -1,4 +1,4 @@
-namespace SeeGreen;
+﻿namespace SeeGreen;
 
 public partial class ControlPanelForm : Form
 {
@@ -13,25 +13,26 @@ public partial class ControlPanelForm : Form
 
    private readonly Preferences _prefs;
 
-   // Keep native icon handle to destroy it on close to prevent leaks (only when using runtime-generated icon)
    private IntPtr _iconHandle = IntPtr.Zero;
+
+   private MenuStrip? _menuStrip;
+   private ToolStripMenuItem? _helpMenu;
+   private ToolStripMenuItem? _aboutItem;
 
    public ControlPanelForm(Preferences prefs)
    {
       _prefs = prefs;
       InitializeComponent();
 
-      // Set runtime-generated icon; avoids dependency on Properties.Resources
+      EnsureAboutMenu();
+
       try
       {
          var (icon, hIcon) = AppIcon.Create(32);
          Icon = icon;
          _iconHandle = hIcon;
       }
-      catch
-      {
-         // ignore icon creation failures
-      }
+      catch { }
 
       // Initialize from prefs
       trackZoom.Minimum = 1;
@@ -105,8 +106,102 @@ public partial class ControlPanelForm : Form
       chkCaptureCrosshair.Enabled = crosshair;
    }
 
+   private void EnsureAboutMenu()
+   {
+      SuspendLayout();
+
+      _menuStrip = Controls.OfType<MenuStrip>().FirstOrDefault();
+      if (_menuStrip is null)
+      {
+         _menuStrip = new MenuStrip
+         {
+            Dock = DockStyle.Top,
+            GripStyle = ToolStripGripStyle.Hidden,
+            AutoSize = true,
+            Padding = new Padding(0),
+            RenderMode = ToolStripRenderMode.ManagerRenderMode,
+            // Use standard control color to match form background and avoid gradients
+            BackColor = SystemColors.Control,
+            ForeColor = SystemColors.ControlText
+         };
+
+         // Flat renderer: no border and solid background (no gradient)
+         _menuStrip.Renderer = new FlatToolStripRenderer();
+
+         MainMenuStrip = _menuStrip;
+         Controls.Add(_menuStrip);
+         Controls.SetChildIndex(_menuStrip, 0);
+      }
+      else
+      {
+         _menuStrip.Dock = DockStyle.Top;
+         _menuStrip.Padding = new Padding(0);
+         _menuStrip.RenderMode = ToolStripRenderMode.ManagerRenderMode;
+         _menuStrip.BackColor = SystemColors.Control;
+         _menuStrip.ForeColor = SystemColors.ControlText;
+         _menuStrip.Renderer = new FlatToolStripRenderer();
+         MainMenuStrip = _menuStrip;
+         Controls.SetChildIndex(_menuStrip, 0);
+      }
+
+      _helpMenu = _menuStrip.Items.OfType<ToolStripMenuItem>().FirstOrDefault(i => i.Text == "Help");
+      if (_helpMenu is null)
+      {
+         _helpMenu = new ToolStripMenuItem("Help");
+         _menuStrip.Items.Add(_helpMenu);
+      }
+
+      _aboutItem = _helpMenu.DropDownItems.OfType<ToolStripMenuItem>().FirstOrDefault(i => i.Text == "About SeeGreen");
+      if (_aboutItem is null)
+      {
+         _aboutItem = new ToolStripMenuItem("About SeeGreen");
+         _aboutItem.Click += (s, e) =>
+         {
+            using var dlg = new AboutForm();
+            dlg.ShowDialog(this);
+         };
+         _helpMenu.DropDownItems.Add(_aboutItem);
+      }
+
+      ResumeLayout(performLayout: true);
+   }
+
    private bool IsMagnifierOn()
    {
       return btnToggleMagnifier.Text.StartsWith("Turn Off", StringComparison.OrdinalIgnoreCase);
+   }
+}
+
+// Flat renderer: solid background and no border for the main MenuStrip,
+// but draws a subtle border around ToolStripDropDown (submenu).
+internal sealed class FlatToolStripRenderer : ToolStripProfessionalRenderer
+{
+   protected override void OnRenderToolStripBorder(ToolStripRenderEventArgs e)
+   {
+      // Draw border only for dropdown menus; keep main menu strip border suppressed
+      if (e.ToolStrip is ToolStripDropDown dropDown)
+      {
+         using var pen = new Pen(SystemColors.ControlDark);
+         var r = new Rectangle(Point.Empty, dropDown.Size);
+         r.Width -= 1;
+         r.Height -= 1;
+         e.Graphics.DrawRectangle(pen, r);
+      }
+      // else: no border for top MenuStrip
+   }
+
+   protected override void OnRenderToolStripBackground(ToolStripRenderEventArgs e)
+   {
+      using var b = new SolidBrush(e.ToolStrip.BackColor);
+      e.Graphics.FillRectangle(b, e.AffectedBounds);
+   }
+
+   protected override void OnRenderMenuItemBackground(ToolStripItemRenderEventArgs e)
+   {
+      // Solid highlight without gradients
+      var bg = e.Item.Selected ? SystemColors.Highlight : e.ToolStrip.BackColor;
+      using var b = new SolidBrush(bg);
+      e.Graphics.FillRectangle(b, new Rectangle(Point.Empty, e.Item.Bounds.Size));
+      e.Item.ForeColor = e.Item.Selected ? SystemColors.HighlightText : SystemColors.ControlText;
    }
 }
