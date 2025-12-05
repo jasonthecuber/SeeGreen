@@ -36,16 +36,16 @@ public partial class ControlUi : Form
       InitializeComponent();
 
       // Set runtime-generated icon(programmatic.ico) so it appears in title bar and taskbar
-      //try
-      //{
-      //   var (icon, hIcon) = AppIcon.Create(32);
-      //   Icon = icon;
-      //   _iconHandle = hIcon;
-      //}
-      //catch
-      //{
-      //   // If generation fails, ignore and continue
-      //}
+      try
+      {
+         var (icon, hIcon) = AppIcon.Create(32);
+         Icon = icon;
+         _iconHandle = hIcon;
+      }
+      catch
+      {
+         // If generation fails, ignore and continue
+      }
 
       _zoomFactor = _prefs.ZoomFactor;
       _magnifierActive = _prefs.MagnifierActive;
