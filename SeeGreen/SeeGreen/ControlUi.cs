@@ -13,6 +13,12 @@ public partial class ControlUi : Form
    private bool _showCrosshair = true;
    private bool _captureCrosshair = false;
 
+   // Show "Magnifier Off" message only once per application run
+   private bool _showOffMessageOnce = true;
+
+   // Keep native icon handle to destroy it on close to prevent leaks (only when using runtime-generated icon)
+   private IntPtr _iconHandle = IntPtr.Zero;
+
    private ControlPanelForm? _panel;
    private readonly Preferences _prefs = Preferences.Load();
 
@@ -28,6 +34,18 @@ public partial class ControlUi : Form
    public ControlUi()
    {
       InitializeComponent();
+
+      // Set runtime-generated icon(programmatic.ico) so it appears in title bar and taskbar
+      //try
+      //{
+      //   var (icon, hIcon) = AppIcon.Create(32);
+      //   Icon = icon;
+      //   _iconHandle = hIcon;
+      //}
+      //catch
+      //{
+      //   // If generation fails, ignore and continue
+      //}
 
       _zoomFactor = _prefs.ZoomFactor;
       _magnifierActive = _prefs.MagnifierActive;
@@ -69,6 +87,11 @@ public partial class ControlUi : Form
       if (_magnifierActive)
       {
          CaptureTimer_Tick(this, EventArgs.Empty);
+         _showOffMessageOnce = false; // if starting active, suppress off message for the rest of the session
+      }
+      else
+      {
+         magPictureBox.Invalidate();
       }
    }
 
@@ -88,6 +111,11 @@ public partial class ControlUi : Form
       if (_magnifierActive)
       {
          CaptureTimer_Tick(this, EventArgs.Empty);
+      }
+      else
+      {
+         // Update the off message scaling on resize
+         magPictureBox.Invalidate();
       }
    }
 
@@ -122,9 +150,18 @@ public partial class ControlUi : Form
       base.OnFormClosed(e);
       _captureTimer.Stop();
       UnregisterHotKey(Handle, HOTKEY_ID);
+
+      // Dispose magnified image
       var img = magPictureBox.Image;
       magPictureBox.Image = null;
       img?.Dispose();
+
+      // Destroy native icon handle to avoid leaks if we created one
+      if (_iconHandle != IntPtr.Zero)
+      {
+         AppIcon.DisposeIconHandle(_iconHandle);
+         _iconHandle = IntPtr.Zero;
+      }
 
       _prefs.MagnifierActive = _magnifierActive;
       _prefs.ZoomFactor = _zoomFactor;
@@ -149,12 +186,20 @@ public partial class ControlUi : Form
 
    private void ToggleMagnifier(bool? active = null)
    {
+      bool previouslyOn = _magnifierActive;
+
       _magnifierActive = active ?? !_magnifierActive;
       _captureTimer.Enabled = _magnifierActive;
       _panel?.SetMagnifierButtonState(_magnifierActive);
 
       _prefs.MagnifierActive = _magnifierActive;
       _prefs.Save();
+
+      // Once the magnifier is turned on at least once, suppress the off message until restart
+      if (!previouslyOn && _magnifierActive)
+      {
+         _showOffMessageOnce = false;
+      }
 
       if (_magnifierActive)
       {
@@ -220,28 +265,26 @@ public partial class ControlUi : Form
 
       try
       {
-         // Capture with Graphics.CopyFromScreen (reliable across most setups)
          using var srcBmp = new Bitmap(captureRect.Width, captureRect.Height);
          using (var g = Graphics.FromImage(srcBmp))
          {
             g.CopyFromScreen(captureRect.Location, Point.Empty, captureRect.Size);
          }
 
-         // Scale to destination size
          var displayBmp = new Bitmap(magPictureBox.Width, magPictureBox.Height);
          using (var g = Graphics.FromImage(displayBmp))
          {
             if (_smoothing)
             {
                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-               g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half; // reduce edge artifacts
+               g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
                g.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
             }
             else
             {
                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
-               g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half; // helps cover edges too
+               g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.None;
                g.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.AssumeLinear;
             }
@@ -277,13 +320,13 @@ public partial class ControlUi : Form
          g.DrawImage(magPictureBox.Image, new Rectangle(0, 0, toSave.Width, toSave.Height));
          if (_captureCrosshair && _showCrosshair)
          {
-            using var pen = new Pen(Color.Lime, 1);
-            int cx = toSave.Width / 2;
-            int cy = toSave.Height / 2;
-            g.DrawLine(pen, cx, 0, cx, toSave.Height);
-            g.DrawLine(pen, 0, cy, toSave.Width, cy);
-            using var circlePen = new Pen(Color.Lime, 1);
-            g.DrawEllipse(circlePen, cx - 4, cy - 4, 8, 8);
+           using var pen = new Pen(Color.Lime, 1);
+           int cx = toSave.Width / 2;
+           int cy = toSave.Height / 2;
+           g.DrawLine(pen, cx, 0, cx, toSave.Height);
+           g.DrawLine(pen, 0, cy, toSave.Width, cy);
+           using var circlePen = new Pen(Color.Lime, 1);
+           g.DrawEllipse(circlePen, cx - 4, cy - 4, 8, 8);
          }
       }
 
@@ -308,9 +351,108 @@ public partial class ControlUi : Form
 
    private void MagPictureBox_Paint(object? sender, PaintEventArgs e)
    {
-      if (!_showCrosshair) return;
-
       var g = e.Graphics;
+
+      // Show the "Magnifier Off" message only before the magnifier is ever turned on in this session
+      if (!_magnifierActive && _showOffMessageOnce)
+      {
+         var client = magPictureBox.ClientRectangle;
+
+         using (var bgBrush = new SolidBrush(Color.FromArgb(160, 32, 32, 32)))
+         {
+            g.FillRectangle(bgBrush, client);
+         }
+
+         string line1 = "Magnifier";
+         string line2 = "Off";
+
+         int pad = (int)Math.Max(6, Math.Min(client.Width, client.Height) * 0.04);
+         var avail = Rectangle.Inflate(client, -pad, -pad);
+
+         // Use StringFormat centered and no wrapping; we will fit by font and clamp width
+         using var sf = new StringFormat(StringFormatFlags.NoClip)
+         {
+            Alignment = StringAlignment.Center,
+            LineAlignment = StringAlignment.Center
+         };
+
+         // Binary search font size that fits width and height with controlled line spacing
+         float minSize = 6f;
+         float maxSize = 400f;
+         float best = minSize;
+
+         using var baseFont = new Font(FontFamily.GenericSansSerif, 12f, FontStyle.Bold, GraphicsUnit.Pixel);
+
+         // Measure that respects very narrow widths by checking each line against avail.Width
+         while (maxSize - minSize > 0.5f)
+         {
+            float mid = (minSize + maxSize) / 2f;
+            using var testFont = new Font(FontFamily.GenericSansSerif, mid, FontStyle.Bold, GraphicsUnit.Pixel);
+
+            var size1 = g.MeasureString(line1, testFont);
+            var size2 = g.MeasureString(line2, testFont);
+
+            // Controlled line spacing: 0.85 of the first line height
+            float spacing = size1.Height * 0.85f;
+
+            float totalH = size1.Height + spacing + size2.Height;
+            float maxW = Math.Max(size1.Width, size2.Width);
+
+            if (totalH <= avail.Height && maxW <= avail.Width)
+            {
+               best = mid;
+               minSize = mid;
+            }
+            else
+            {
+               maxSize = mid;
+            }
+         }
+
+         using var finalFont = new Font(FontFamily.GenericSansSerif, best, FontStyle.Bold, GraphicsUnit.Pixel);
+         var sizeA = g.MeasureString(line1, finalFont);
+         var sizeB = g.MeasureString(line2, finalFont);
+         float spacingFinal = sizeA.Height * 0.85f;
+
+         // Compute top-lefts to render centered, clamped within avail
+         float totalHeight = sizeA.Height + spacingFinal + sizeB.Height;
+         float startY = avail.Top + (avail.Height - totalHeight) / 2f;
+
+         float x1 = avail.Left + (avail.Width - sizeA.Width) / 2f;
+         float y1 = startY;
+
+         float x2 = avail.Left + (avail.Width - sizeB.Width) / 2f;
+         float y2 = startY + sizeA.Height + spacingFinal;
+
+         // Clamp to ensure visibility in very tall/narrow windows
+         x1 = Math.Max(avail.Left, Math.Min(x1, avail.Right - sizeA.Width));
+         x2 = Math.Max(avail.Left, Math.Min(x2, avail.Right - sizeB.Width));
+         y1 = Math.Max(avail.Top, Math.Min(y1, avail.Bottom - (sizeA.Height + sizeB.Height + spacingFinal)));
+         y2 = Math.Max(avail.Top + sizeA.Height * 0.5f, Math.Min(y2, avail.Bottom - sizeB.Height));
+
+         // Local background behind the text
+         var textBounds = Rectangle.FromLTRB(
+            (int)Math.Min(x1, x2) - pad,
+            (int)y1 - pad,
+            (int)Math.Max(x1 + sizeA.Width, x2 + sizeB.Width) + pad,
+            (int)(y2 + sizeB.Height + pad)
+         );
+         using (var localBg = new SolidBrush(Color.FromArgb(200, 0, 0, 0)))
+         {
+            g.FillRectangle(localBg, textBounds);
+         }
+
+         using var textBrush = new SolidBrush(Color.Lime);
+         g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
+         g.DrawString(line1, finalFont, textBrush, new PointF(x1, y1));
+         g.DrawString(line2, finalFont, textBrush, new PointF(x2, y2));
+
+         // No crosshair when magnifier is off
+         return;
+      }
+
+      // Draw crosshair over magnified image when enabled
+      if (!_showCrosshair) return;
 
       using var pen = new Pen(Color.Lime, 1);
       int cx = magPictureBox.Width / 2;

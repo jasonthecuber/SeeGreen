@@ -19,20 +19,27 @@ partial class ControlUi
 
    private void InitializeComponent()
    {
-      components = new System.ComponentModel.Container();
-      Text = "SeeGreen Magnifier View";
-      FormBorderStyle = FormBorderStyle.Sizable;
-      StartPosition = FormStartPosition.CenterScreen;
-      MinimumSize = new Size(300, 200);
-
-      magPictureBox = new PictureBox
-      {
-         Width = 600,
-         Height = 400,
-         BorderStyle = BorderStyle.None, // remove border to eliminate black edge
-         Anchor = AnchorStyles.Top | AnchorStyles.Left
-      };
-
+      magPictureBox = new PictureBox();
+      ((System.ComponentModel.ISupportInitialize)magPictureBox).BeginInit();
+      SuspendLayout();
+      // 
+      // magPictureBox
+      // 
+      magPictureBox.Location = new Point(0, 0);
+      magPictureBox.Name = "magPictureBox";
+      magPictureBox.Size = new Size(100, 50);
+      magPictureBox.TabIndex = 0;
+      magPictureBox.TabStop = false;
+      // 
+      // ControlUi
+      // 
+      ClientSize = new Size(284, 261);
       Controls.Add(magPictureBox);
+      MinimumSize = new Size(300, 200);
+      Name = "ControlUi";
+      StartPosition = FormStartPosition.CenterScreen;
+      Text = "SeeGreen Magnifier View";
+      ((System.ComponentModel.ISupportInitialize)magPictureBox).EndInit();
+      ResumeLayout(false);
    }
 }
