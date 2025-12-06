@@ -6,7 +6,7 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "dotnet: build",
-            "program": "${workspaceFolder}/SeeGreen/bin/Debug/net8.0-windows/SeeGreen.dll",
+            "program": "${workspaceFolder}/SeeGreen/SeeGreen/bin/Debug/net8.0-windows/SeeGreen.dll",
             "args": [],
             "cwd": "${workspaceFolder}",
             "console": "internalConsole",
